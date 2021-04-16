@@ -32,13 +32,48 @@ int num_options(Square *s) {
 // Group Functions
 
 bool is_valid(Group *g) {
-    bool vals
+    bool vals;
     for (int i = 0; i < GROUP_SIZE; i++) {
     
     }
 }
 
+// Print a group using the designated length
+static void print_group(int f, Group *g, int len) {
+    fputc(f, BORDER_CHAR);
+    for (int i = 0; i < 9; i++) {
+        fputc(f, g->square.value);
+        if ((i + 1) % len) {
+            fputc(f, SPACE_CHAR);
+        } else {
+            fputc(f, BORDER_CHAR);
+            fputc(f, '\n');
+        }
+    }
+}
+
 // Board Functions
+
+// Initializes the board
+void init_board(Board *b) {
+    for (int i = 0; i < GROUP_SIZE; i++) {
+        for (int j = 0; j < NUM_GROUPS; j++) {
+            int l, m;
+            // setup the rows
+            l = i;
+            m = j;
+            b->row[i]->square[j] = &(board->square[l * GROUP_LEN + m]);
+            // setup the columns
+            l = j;
+            m = i;
+            b->col[i]->square[j] = &(board->square[l * GROUP_LEN + m]);
+            // setup the boxes
+            l = (i / 3) * 3 + (j / 3);
+            m = (i % 3) * 3 + (j % 3);
+            b->box[i]->square[j] = &(board->square[l * GROUP_LEN + m]);
+        }
+    }
+}
 
 // Resets the board
 void reset_board(Board *b) {
@@ -63,6 +98,21 @@ int load_board(Board *b, char *filename) {
     // Go through and set all of the
 }
 
+// TODO: make one generic print option which takes a filler char, an
+// array of 9 characters to print, and a start/stop char
+static void print_header_row(int f) {
+    for (int i = 0; i < 3; i++) {
+        fputc(f, HEADER_CHAR);
+        fputc(f, HEADER_BORDER_CHAR);
+        for (int j = 0; j < 2; j++) {
+            fputc(f, HEADER_BORDER_CHAR);
+            fputc(f, HEADER_BORDER_CHAR);
+        }
+    }
+    fputc(f, HEADER_CHAR);
+    fputc(f, '\n');
+}
+
 // Print the board to the given filename
 // args: filename: string to print to, if NULL, print to stdout
 // returns: 0 on success, 1 on failure
@@ -74,5 +124,29 @@ int print_board(Board *b, char *filename) {
     } else {
         f = stdout;
     }
+    print_header_row(f);
+    for (int i = 0; i < 3; i++) {
+        fprint_row(f, b, i);
+        print_header_row(f);
+    }
     return 0;
+}
+
+static void fprint_row(f, Board *b, int row) {
+    print_group(f, b->row[row], 9);
+}
+
+// Print out a row
+void print_row(Board *b, int row) {
+    print_group(stdout, b->row[row], 9);
+}
+
+// Print out a column
+void print_col(int f, Board *b, int col) {
+    print_group(stdout, b->col[col], 1);
+}
+
+// Print out a box
+void print_box(int f, Board *b, int box) {
+    print_group(stdout, b->box[box], 3);
 }

@@ -19,21 +19,27 @@ bool is_set(Square *s);
 
 // Group object - there are 3 main types of group:
 // Row, column, and box. They all have the same rules
+typedef struct Group {
+	Square *square[GROUP_LEN];
+}
 
 // Board object - The overall board
 
 typedef struct Board {
     Square square[NUM_SQUARES];
     Group row[GROUP_SIZE];
-    Group column[GROUP_SIZE];
+    Group col[GROUP_SIZE];
     Group box[GROUP_SIZE];
 };
 
 // Functions for the board
-
+void init_board(Board *b);
 void reset_board(Board *b);
 int load_board(Board *b, char *filename);
 int print_board(Board *b, char *filename);
+void print_row(Board *b, int row);
+void print_col(Board *b, int col);
+void print_box(Board *b, int box);
 
 
 #endif
