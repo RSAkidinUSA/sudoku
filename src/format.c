@@ -1,19 +1,18 @@
-#include <stdio.h>
 #include "format.h"
 
 // returns 0 if no errors, else 1
-int read_file(Board *b, int f) {
+int read_file(Board *b, FILE *f) {
     int c;
-    int row = 0, col = 0;
+    int count = 0;
     // TODO: psuedocode
 
     // read the first char of each line to determine if it's a header or data
     do {
-    	c = getchar(f);
+    	c = fgetc(f);
     	switch (c) {
     		case HEADER_CHAR:
     			do {
-    				c = getchar(f); // read in the rest of the line
+    				c = fgetc(f); // read in the rest of the line
     			} while (c != '\n' && c != EOF);
     			break;
     		case '0':
@@ -26,13 +25,33 @@ int read_file(Board *b, int f) {
     		case '7':
     		case '8':
     		case '9':
-    			b->
-
+                if (count < 9 * 9) {
+        			b->square[count++].value = c - '0';
+                    break;
+                } else {
+                    fprintf(stderr, "Error: Tried to read in "\
+                            "too many values...\n");
+                    return 1;
+                }
+            // valid values we should just skip
+            case BORDER_CHAR:
+            case ' ':
     		case EOF:
+                break;
+            // if we get a newline where we expect it, all good
+            case '\n':
+                if (! (count % 9)) {
+                    break;
+                }
+            // otherwise fall through into errors
+            // Errors
+            default:
+                fprintf(stderr, "Error: Read char %c (0x%02x) after %d values."\
+                        "\nI don't know what to do...\n", (char) c, c, count);
+                return 1;
     	}
     } while (c != EOF);
-
-    // data lines should alternate a number between 0 and 9 and a non-number
-    // if more than 9 values, or more than 9 lines, there's an issue
+    // check we didn't run into any errors, check we had enough values
+    return 0;
 }
 

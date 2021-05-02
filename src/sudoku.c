@@ -7,7 +7,7 @@
 void reset_square(Square *s) {
     s->value = 0;
     for (int i = 0; i < 9; i++) {
-        s->possible = True;
+        s->possible[i] = true;
     }
 }
 
@@ -23,7 +23,7 @@ int num_options(Square *s) {
         count = 1;
     } else {
         for (int i = 0; i < GROUP_SIZE; i++) {
-            count += (s->possible) ? 1 : 0;
+            count += (s->possible[i]) ? 1 : 0;
         }
     }
     return count;
@@ -32,22 +32,51 @@ int num_options(Square *s) {
 // Group Functions
 
 bool is_valid(Group *g) {
-    bool vals;
+    bool used[9] = {false, };
     for (int i = 0; i < GROUP_SIZE; i++) {
-    
+        int tmp = -1;
+        switch(num_options(g->square[i])) {
+        case 0:
+            return false;
+        case 1:
+            tmp = g->square[i]->value - 1;
+            if (used[tmp]) {
+                return false;
+            } else {
+                used[tmp] = true;
+            }
+            break;
+        case 2:
+        case 3:
+        case 4:
+        case 5:
+        case 6:
+        case 7:
+        case 8:
+        case 9:
+            break;
+        // This should never happen but just in case
+        default:
+            return false;
+        }
     }
+    return true;
 }
 
 // Print a group using the designated length
-static void print_group(int f, Group *g, int len) {
-    fputc(f, BORDER_CHAR);
+static void print_group(FILE *f, Group *g, int len) {
+    fputc(BORDER_CHAR, f);
     for (int i = 0; i < 9; i++) {
-        fputc(f, g->square.value);
+        fputc(g->square[i]->value + '0', f);
         if ((i + 1) % len) {
-            fputc(f, SPACE_CHAR);
+            if ((i + 1) % 3) {
+                fputc(SPACE_CHAR, f);
+            } else {
+                fputc(BORDER_CHAR, f);
+            }
         } else {
-            fputc(f, BORDER_CHAR);
-            fputc(f, '\n');
+            fputc(BORDER_CHAR, f);
+            fputc('\n', f);
         }
     }
 }
@@ -62,15 +91,15 @@ void init_board(Board *b) {
             // setup the rows
             l = i;
             m = j;
-            b->row[i]->square[j] = &(board->square[l * GROUP_LEN + m]);
+            b->row[i].square[j] = &(b->square[l * GROUP_SIZE + m]);
             // setup the columns
             l = j;
             m = i;
-            b->col[i]->square[j] = &(board->square[l * GROUP_LEN + m]);
+            b->col[i].square[j] = &(b->square[l * GROUP_SIZE + m]);
             // setup the boxes
             l = (i / 3) * 3 + (j / 3);
             m = (i % 3) * 3 + (j % 3);
-            b->box[i]->square[j] = &(board->square[l * GROUP_LEN + m]);
+            b->box[i].square[j] = &(b->square[l * GROUP_SIZE + m]);
         }
     }
 }
@@ -78,39 +107,68 @@ void init_board(Board *b) {
 // Resets the board
 void reset_board(Board *b) {
     for (int i = 0; i < NUM_SQUARES; i++) {
-        reset_square(b->square[i]);
+        reset_square(&(b->square[i]));
     }
 }
 
 // Loads the board from a given file based on format in format.h
-
+// returns: 1 if unable to open file, 2 if can't read
 int load_board(Board *b, char *filename) {
-    // Open the file
-    f = open(filename, "r")
-    // TODO: check for error doing so
-
+    FILE *f = NULL;
+    int retval = 0;
     // reset the board
     reset_board(b);
-    // read the file
-    if (read_file(b, f)) {
-        return 1;
+    // Open the file
+    if (filename) {
+        f = fopen(filename, "r");
+    } else {
+        f = stdin;
     }
-    // Go through and set all of the
+    // Check for error doing so
+    if (!f) {
+        retval = 1;
+    } else if (read_file(b, f)) {
+        retval = 2;
+    }
+    if (f && f != stdin) {
+        fclose(f);
+    }
+    
+    return retval;
 }
 
 // TODO: make one generic print option which takes a filler char, an
 // array of 9 characters to print, and a start/stop char
-static void print_header_row(int f) {
+static void print_header_row(FILE *f) {
     for (int i = 0; i < 3; i++) {
-        fputc(f, HEADER_CHAR);
-        fputc(f, HEADER_BORDER_CHAR);
+        fputc(HEADER_CHAR, f);
+        fputc(HEADER_BORDER_CHAR, f);
         for (int j = 0; j < 2; j++) {
-            fputc(f, HEADER_BORDER_CHAR);
-            fputc(f, HEADER_BORDER_CHAR);
+            fputc(HEADER_BORDER_CHAR, f);
+            fputc(HEADER_BORDER_CHAR, f);
         }
     }
-    fputc(f, HEADER_CHAR);
-    fputc(f, '\n');
+    fputc(HEADER_CHAR, f);
+    fputc('\n', f);
+}
+
+static void fprint_row(FILE *f, Board *b, int row) {
+    print_group(f, &(b->row[row]), 9);
+}
+
+// Print out a row
+void print_row(Board *b, int row) {
+    print_group(stdout, &(b->row[row]), 9);
+}
+
+// Print out a column
+void print_col(Board *b, int col) {
+    print_group(stdout, &(b->col[col]), 1);
+}
+
+// Print out a box
+void print_box(Board *b, int box) {
+    print_group(stdout, &(b->box[box]), 3);
 }
 
 // Print the board to the given filename
@@ -118,35 +176,24 @@ static void print_header_row(int f) {
 // returns: 0 on success, 1 on failure
 
 int print_board(Board *b, char *filename) {
-    int f;
+    FILE *f = NULL;
     if (filename) {
-
+        f = fopen(filename, "w");
+        if (!f) {
+            return 1;
+        }
     } else {
         f = stdout;
     }
-    print_header_row(f);
-    for (int i = 0; i < 3; i++) {
+    for (int i = 0; i < 9; i++) {
+        if (! (i % 3)) {
+            print_header_row(f);
+        }
         fprint_row(f, b, i);
-        print_header_row(f);
+    }
+    print_header_row(f);
+    if (f != stdout) {
+        fclose(f);
     }
     return 0;
-}
-
-static void fprint_row(f, Board *b, int row) {
-    print_group(f, b->row[row], 9);
-}
-
-// Print out a row
-void print_row(Board *b, int row) {
-    print_group(stdout, b->row[row], 9);
-}
-
-// Print out a column
-void print_col(int f, Board *b, int col) {
-    print_group(stdout, b->col[col], 1);
-}
-
-// Print out a box
-void print_box(int f, Board *b, int box) {
-    print_group(stdout, b->box[box], 3);
 }
